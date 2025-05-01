@@ -692,10 +692,10 @@ class LLModuleWithLinearProbe(nn.Module):
         buffer.seek(0)
         return base64.b64encode(buffer.read()).decode("utf-8")
 
-    def generate(self, input_ids: torch.tensor, **kwargs) -> list[tuple(tuple(float, float), torch.tensor)]:
+    def generate(self, input_ids: torch.tensor, **kwargs) -> list[tuple[tuple[float, float], torch.tensor]]:
         return self.forward(input_ids=input_ids)
 
-    def forward(self, input_ids: Optional[torch.tensor] = None) -> list[tuple(tuple(float, float), torch.tensor)]:
+    def forward(self, input_ids: Optional[torch.tensor] = None) -> list[tuple[tuple[float, float], torch.tensor]]:
         batch_size = input_ids.shape[0]
 
         base_model_output = self.base_model(input_ids=input_ids.to("cuda"), output_hidden_states=True)
