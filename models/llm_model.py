@@ -372,11 +372,11 @@ class LLModel(Model):
                 )
             else:
                 internal_representations = []
-                if isinstance(self.model, LLModuleWithLinearProbe):
-                    (a_score, b_score), internal_representations = outputs[i]
-                else:
-                    a_score = get_string_log_prob(constants.DEFAULT_DEBATER_A_NAME, logits, i)
-                    b_score = get_string_log_prob(constants.DEFAULT_DEBATER_B_NAME, logits, i)
+                # if isinstance(self.model, LLModuleWithLinearProbe):
+                #     (a_score, b_score), internal_representations = outputs[i]
+                # else:
+                a_score = get_string_log_prob(constants.DEFAULT_DEBATER_A_NAME, logits, i)
+                b_score = get_string_log_prob(constants.DEFAULT_DEBATER_B_NAME, logits, i)
 
                 normalized_a_score, normalized_b_score = normalize_log_probs(a_score, b_score)
                 decoded_outputs.append(
@@ -512,6 +512,65 @@ class MistralModel(LLModel):
 
 
 class Llama3Model(LLModel):
+    INSTRUCTION_PREFIX = ""
+    INSTRUCTION_SUFFIX = "<|start_header_id|>assistant<|end_header_id|>\n\n"
+    ATTENTION_MODULES = ["q_proj", "k_proj", "v_proj"]
+    MLP_MODULES = ["gate_proj", "up_proj", "down_proj"]
+    TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+    LINEAR_IDXS = [31, 16]
+    QUANTIZE = False
+
+    def __init__(
+        self,
+        alias: str,
+        file_path: Optional[str] = None,
+        is_debater: bool = True,
+        nucleus: bool = True,
+        probe_hyperparams: Optional[ProbeHyperparams] = None,
+        generation_params: GenerationParams = GenerationParams(),
+        peft_base_model: Optional[str] = None,
+    ):
+        super().__init__(
+            alias=alias,
+            file_path=file_path,
+            is_debater=is_debater,
+            nucleus=nucleus,
+            instruction_prefix="",
+            instruction_suffix="",
+            requires_file_path=True,
+            probe_hyperparams=probe_hyperparams,
+            max_mini_batch_size=1,
+            quantize=False,
+            generation_params=generation_params,
+            peft_base_model=peft_base_model,
+        )
+
+    def copy(self, alias: str, is_debater: Optional[bool] = None, nucleus: bool = False) -> LLModel:
+        """Generates a deepcopy of this model"""
+        copy = Llama3Model(
+            alias=alias,
+            is_debater=self.is_debater if is_debater == None else is_debater,
+            nucleus=nucleus,
+            generation_params=self.generation_params,
+        )
+        copy.is_debater = self.is_debater if is_debater == None else is_debater
+        copy.tokenizer = self.tokenizer
+        copy.model = self.model
+        copy.generation_config = self.generation_config
+        return copy
+
+    def create_default_generation_config(
+        self, is_debater: bool = True, generation_params: GenerationParams = GenerationParams()
+    ) -> GenerationConfig:
+        """Creates a default generation config so that the model can generate text"""
+        generation_config = super().create_default_generation_config(
+            is_debater=is_debater, generation_params=generation_params
+        )
+        generation_config.eos_token_id = [self.tokenizer.eos_token_id, self.tokenizer.convert_tokens_to_ids("<|eot_id|>")]
+        return generation_config
+    
+
+class Qwen3Model(LLModel):
     INSTRUCTION_PREFIX = ""
     INSTRUCTION_SUFFIX = "<|start_header_id|>assistant<|end_header_id|>\n\n"
     ATTENTION_MODULES = ["q_proj", "k_proj", "v_proj"]
