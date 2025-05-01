@@ -1,0 +1,63 @@
+version: '3'
+
+services:
+  # Base service with common configuration
+  debate-modeling-base:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/app
+      - ./data/datasets:/app/data/datasets
+      - ./outputs:/app/outputs
+    environment:
+      - SRC_ROOT=/app/
+      - INPUT_ROOT=/app/data/datasets/
+      # Add other environment variables as needed:
+      # - OPENAI_API_KEY=your_openai_api_key
+      # - OPENAI_ORGANIZATION=your_openai_organization
+      # - META_ACCESS_KEY=your_meta_access_key
+      # - ANTHROPIC_API_KEY=your_anthropic_api_key
+    # Use GPU if available
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # This is an abstract service that won't be started directly
+    profiles: ["never-start"]
+
+  # Interactive shell for development and exploration
+  shell:
+    extends:
+      service: debate-modeling-base
+    # Keep the container running
+    tty: true
+    stdin_open: true
+    command: /bin/bash
+
+  # Service for running SFT with Test configuration
+  sft-test:
+    extends:
+      service: debate-modeling-base
+    command: python scripts/run_sft.py --configuration="Test" --test
+
+  # Service for running SFT with Test - Judge configuration
+  sft-test-judge:
+    extends:
+      service: debate-modeling-base
+    command: python scripts/run_sft.py --configuration="Test - Judge" --test
+
+  # Service for running SFT with Test - Open configuration
+  sft-test-open:
+    extends:
+      service: debate-modeling-base
+    command: python scripts/run_sft.py --configuration="Test - Open" --test
+
+  # Service for running SFT with Llama3 - Human and GPT configuration
+  sft-llama3-human-gpt:
+    extends:
+      service: debate-modeling-base
+    command: python scripts/run_sft.py --configuration="Train - Llama3 - Human and GPT"
